@@ -1,11 +1,11 @@
 #include "QuadTree.h"
+
+#include "Quady.h"
 #include "ContentStreaming.h"
 #include "AssertionMacros.h"
 #include "DrawDebugHelpers.h"
 
 #define LOCTEXT_NAMESPACE "Quady"
-
-DEFINE_LOG_CATEGORY_STATIC(LogQuadTree, Log, All);
 
 DECLARE_CYCLE_STAT(TEXT("QuadTree Update"), STAT_QuadTreeUpdate, STATGROUP_Quady);
 
@@ -21,16 +21,29 @@ FQuadTreeNode::~FQuadTreeNode()
     });
 }
 
-void FQuadTreeNode::RecursiveSplit(const FBoxSphereBounds& Location)
+bool FQuadTreeNode::RecursiveSplit(const FBoxSphereBounds& Location, const int32& MinimumQuadSize)
 {
     if (!LocalContainsOrIntersects(Location))
-        return;
+    {
+        Empty();
+        return false;
+    }
+
+    if (Bounds.GetSize().X <= MinimumQuadSize)
+        return false;
 
     Split();
 
-    ForEachChild([&Location](TSharedPtr<FQuadTreeNode>& Child) {
-        Child->RecursiveSplit(Location);
-    });
+    bool bAnyChildWasSplit = AnyChild([&Location, &MinimumQuadSize](TSharedPtr<FQuadTreeNode>& Child) {
+        return Child->RecursiveSplit(Location, MinimumQuadSize);
+    }, false);
+
+    // TODO: Optimize, this is stupid
+    // This performs the constraint step
+    if (bAnyChildWasSplit)
+        ForEachChild([](TSharedPtr<FQuadTreeNode>& Child) { Child->Split(); });
+
+    return true;
 }
 
 void FQuadTreeNode::Split()
@@ -44,16 +57,16 @@ void FQuadTreeNode::Split()
 
     auto HalfSize = (Max - Min) * 0.5f;
 
-    const auto TopLeft = FBox(FVector(Min.X, Min.Y + HalfSize.Y, HalfSize.Z), FVector(Min.X + HalfSize.X, Max.Y, HalfSize.Z));
+    const auto TopLeft = FBox(FVector(Min.X + HalfSize.X, Min.Y, -HalfSize.Z), FVector(Max.X, Min.Y + HalfSize.Y, HalfSize.Z));
     Children.Insert(MakeShared<FQuadTreeNode>(FQuadTreeNode(TopLeft)), 0);
 
-    const auto TopRight = FBox(FVector(Min.X + HalfSize.X, Min.Y + HalfSize.Y, HalfSize.Z), FVector(Max.X, Max.Y, HalfSize.Z));
+    const auto TopRight = FBox(FVector(Min.X + HalfSize.X, Min.Y + HalfSize.Y, -HalfSize.Z), FVector(Max.X, Max.Y, HalfSize.Z));
     Children.Insert(MakeShared<FQuadTreeNode>(FQuadTreeNode(TopRight)), 1);
 
-    const auto BottomLeft = FBox(FVector(Min.X, Min.Y, HalfSize.Z), FVector(Min.X + HalfSize.X, Max.Y + HalfSize.Y, HalfSize.Z));
+    const auto BottomLeft = FBox(FVector(Min.X, Min.Y, -HalfSize.Z), FVector(Min.X + HalfSize.X, Min.Y + HalfSize.Y, HalfSize.Z));
     Children.Insert(MakeShared<FQuadTreeNode>(FQuadTreeNode(BottomLeft)), 2);
 
-    const auto BottomRight = FBox(FVector(Min.X + HalfSize.X, Min.Y, HalfSize.Z), FVector(Max.X, Min.Y + HalfSize.Y, HalfSize.Z));
+    const auto BottomRight = FBox(FVector(Min.X, Min.Y + HalfSize.Y, -HalfSize.Z), FVector(Min.X + HalfSize.X, Max.Y, HalfSize.Z));
     Children.Insert(MakeShared<FQuadTreeNode>(FQuadTreeNode(BottomRight)), 3);
 }
 
@@ -80,7 +93,16 @@ void FQuadTreeNode::Draw(const UWorld* World)
     auto Center = Bounds.GetCenter();
     auto Extent = Bounds.GetExtent();
 
-    DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Yellow);
+    Center.Z = 0.0f;
+
+    //DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::White);
+
+    Extent.Z = 0.0f;
+    DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Red);
+
+    ForEachChild([&World](TSharedPtr<FQuadTreeNode>& Child) {
+        Child->Draw(World);
+    });
 }
 
 void FQuadTreeNode::ForEachChild(TFunction<void(TSharedPtr<FQuadTreeNode>&)> Func)
@@ -92,16 +114,23 @@ void FQuadTreeNode::ForEachChild(TFunction<void(TSharedPtr<FQuadTreeNode>&)> Fun
     }
 }
 
-bool FQuadTreeNode::AnyChild(TFunction<bool(TSharedPtr<FQuadTreeNode>&)> Func)
+bool FQuadTreeNode::AnyChild(TFunction<bool(TSharedPtr<FQuadTreeNode>&)> Func, bool bTerminateOnFirst)
 {
+    bool bResult = false;
+
     if (Children.Num() > 0)
     {
         for (auto& Child : Children)
             if (Func(Child))
-                return true;
+            {
+                bResult = true;
+                if (bTerminateOnFirst)
+                    return bResult;
+            }
+                
     }
 
-    return true;
+    return bResult;
 }
 
 const bool FQuadTreeNode::LocalContainsOrIntersects(const FBoxSphereBounds& Location)
@@ -113,8 +142,8 @@ const bool FQuadTreeNode::LocalContainsOrIntersects(const FBoxSphereBounds& Loca
 
 UQuadTree::UQuadTree()
     : bFloatingOrigin(false),
-    MinimumQuadSize(64),
-    MaximumQuadSize(1024),
+    MinimumQuadSize(1600),
+    MaximumQuadSize(102400),
     ViewerRadiusMultiplier(1.0f)
 {
     Build();
@@ -142,7 +171,9 @@ void UQuadTree::Update()
     for (auto i = 0; i < ViewCount; i++)
     {
         auto& ViewInfo = StreamingManager.GetViewInformation(i);
-        auto Sphere = FSphere(ViewInfo.ViewOrigin, MinimumQuadSize * ViewerRadiusMultiplier);
+        auto ViewOrigin = ViewInfo.ViewOrigin;
+        ViewOrigin.Z = 0.0f;
+        auto Sphere = FSphere(ViewOrigin, MinimumQuadSize * ViewerRadiusMultiplier);
         PreviousViewLocations.Add(FBoxSphereBounds(Sphere));
     }
 
@@ -151,12 +182,20 @@ void UQuadTree::Update()
     // NOTE: Only supports single viewer for now
 
     auto& FirstViewer = PreviousViewLocations[0];
-    Root.RecursiveSplit(FirstViewer);
+    Root.RecursiveSplit(FirstViewer, MinimumQuadSize);
+
+#if WITH_EDITOR
+    PrevousViewLocation = FirstViewer.GetSphere().Center;
+#endif
 }
 
 void UQuadTree::Draw(const UWorld* World)
 {
     check(World);
+
+#if WITH_EDITOR
+    DrawDebugCircle(World, PrevousViewLocation, MinimumQuadSize * ViewerRadiusMultiplier, 64, FColor::Green);
+#endif
 
     Root.Draw(World);
 }

@@ -5,8 +5,6 @@
 
 #include "QuadTree.generated.h"
 
-DECLARE_STATS_GROUP(TEXT("Quady"), STATGROUP_Quady, STATCAT_Advanced);
-
 struct FQuadTreeNode;
 class UWorld;
 
@@ -20,7 +18,8 @@ public:
     FQuadTreeNode(const FBox& Bounds);
     virtual ~FQuadTreeNode();
 
-    void RecursiveSplit(const FBoxSphereBounds& Location);
+    /* Returns true if was split, used for constraints */
+    bool RecursiveSplit(const FBoxSphereBounds& Location, const int32& MinimumQuadSize);
     void Split();
     void Empty();
     const bool ContainsOrIntersects(const FBoxSphereBounds& Location);
@@ -33,7 +32,7 @@ private:
     TArray<TSharedPtr<FQuadTreeNode>, TFixedAllocator<4>> Children;
 
     inline void ForEachChild(TFunction<void(TSharedPtr<FQuadTreeNode>&)> Func);
-    inline bool AnyChild(TFunction<bool(TSharedPtr<FQuadTreeNode>&)> Func);
+    inline bool AnyChild(TFunction<bool(TSharedPtr<FQuadTreeNode>&)> Func, bool bTerminateOnFirst = true);
 
     const bool LocalContainsOrIntersects(const FBoxSphereBounds& Location);
 };
@@ -63,17 +62,27 @@ public:
     UQuadTree();
 
     /* Validate and construct QuadTree */
+    UFUNCTION(BlueprintCallable, Category = "QuadTree")
     virtual void Build();
 
     /* Update QuadTree state for viewer */
+    UFUNCTION(BlueprintCallable, Category = "QuadTree")
     virtual void Update();
 
     /* Draw Quads */
     virtual void Draw(const UWorld* World);
+
+    UFUNCTION(BlueprintCallable, Category = "QuadTree", meta = (WorldContext = "WorldContextObject"))
+    void Draw(UObject* WorldContextObject) { Draw(WorldContextObject->GetWorld()); }
     
 private:
     UPROPERTY(Transient)
     TArray<FBoxSphereBounds> PreviousViewLocations;
+
+#if WITH_EDITOR
+    /* For drawing */
+    FVector PrevousViewLocation;
+#endif
 
     FQuadTreeNode Root;
 };
