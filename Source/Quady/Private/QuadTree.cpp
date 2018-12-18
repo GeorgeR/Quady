@@ -194,7 +194,7 @@ void UQuadTree::Draw(const UWorld* World)
     check(World);
 
 #if WITH_EDITOR
-    DrawDebugCircle(World, PrevousViewLocation, MinimumQuadSize * ViewerRadiusMultiplier, 64, FColor::Green);
+    DrawDebugSphere(World, PrevousViewLocation, MinimumQuadSize * ViewerRadiusMultiplier, 64, FColor::Green);
 #endif
 
     Root.Draw(World);
