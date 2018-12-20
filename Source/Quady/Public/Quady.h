@@ -10,6 +10,14 @@ DECLARE_LOG_CATEGORY_CLASS(LogQuady, Log, All);
 
 DECLARE_STATS_GROUP(TEXT("Quady"), STATGROUP_Quady, STATCAT_Advanced);
 
+/*
+Landscape to Quady terminology:
+--------------------------------
+Quad        |       Cell
+Section     |       Quad
+Component   |       Quad
+*/
+
 class FQuadyModule 
     : public IModuleInterface
 {
