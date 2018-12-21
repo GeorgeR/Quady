@@ -86,7 +86,6 @@ public:
 
     /* Returns true if was split, used for constraints */
     bool Select(const TSharedPtr<FQuadTreeViewer>& Viewer);
-
     bool Select(const TSharedPtr<FQuadTreeViewer>& Viewer, TSet<FQuadTreeNodeSelectionEvent>& SelectionEvents);
 
     inline const bool IsSelected() const { return bIsSelected; }
@@ -111,6 +110,7 @@ private:
     TMap<EQuadrant, TSharedPtr<FQuadTreeNode>> Children;
 
     bool Split();
+    void Empty();
     
     void SetSelected(const bool bIsSelected, const bool bRecursive = false);
     inline void ForEachChild(TFunction<void(EQuadrant, TSharedPtr<FQuadTreeNode>&)> Func);
