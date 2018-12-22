@@ -1,10 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Platform.h"
 
-#include "QuadTreeMeshComponent.generated.h"
-
-//
 //struct FQuadyVertexRef
 //{
 //public:
@@ -23,7 +21,9 @@
 //    }
 //};
 
-// , Within = QuadTreeMeshProxy
+#include "QuadTreeMeshComponent.generated.h"
+
+// Within = QuadTreeMeshProxy
 UCLASS(HideCategories = (Display, Attachment, Physics, Debug, Collision, Movement, Rendering, PrimitiveComponent, Object, Transform, Mobility), ShowCategories = ("Rendering|Material"), MinimalAPI)
 class UQuadTreeMeshComponent
     : public UPrimitiveComponent

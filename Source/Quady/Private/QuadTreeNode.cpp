@@ -199,6 +199,10 @@ bool FQuadTreeNode::Split()
     return true;
 }
 
+void FQuadTreeNode::Empty()
+{
+}
+
 void FQuadTreeNode::SetSelected(const bool bIsSelected, const bool bRecursive /*= false*/)
 {
     this->bIsSelected = bIsSelected;
