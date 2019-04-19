@@ -1,4 +1,4 @@
-#include "QuadTreeViewer.h"
+#include "QuadTreeObserver.h"
 
 #if !UE_BUILD_SHIPPING
 #include "DrawDebugHelpers.h"
@@ -7,7 +7,7 @@
 
 #define LOCTEXT_NAMESPACE "Quady"
 
-const bool FQuadTreeViewer::HasLocationChanged(bool bClearFlag /*= false*/)
+const bool FQuadTreeObserver::HasLocationChanged(bool bClearFlag /*= false*/)
 {
     if (bClearFlag && bLocationDirty)
     {
@@ -18,17 +18,17 @@ const bool FQuadTreeViewer::HasLocationChanged(bool bClearFlag /*= false*/)
     return bLocationDirty;
 }
 
-const bool FQuadTreeViewer::HasLocationChanged() const
+const bool FQuadTreeObserver::HasLocationChanged() const
 {
     return bLocationDirty;
 }
 
-const FVector& FQuadTreeViewer::GetLocation() const
+const FVector& FQuadTreeObserver::GetLocation() const
 {
     return Location;
 }
 
-void FQuadTreeViewer::SetLocation(const FVector& Location)
+void FQuadTreeObserver::SetLocation(const FVector& Location)
 {
     if (!this->Location.Equals(Location))
     {
@@ -40,7 +40,7 @@ void FQuadTreeViewer::SetLocation(const FVector& Location)
     }
 }
 
-const bool FQuadTreeViewer::HasDirectionChanged(bool bClearFlag /*= false*/)
+const bool FQuadTreeObserver::HasDirectionChanged(bool bClearFlag /*= false*/)
 {
     if (bClearFlag && bLocationDirty)
     {
@@ -51,17 +51,17 @@ const bool FQuadTreeViewer::HasDirectionChanged(bool bClearFlag /*= false*/)
     return bDirectionDirty;
 }
 
-const bool FQuadTreeViewer::HasDirectionChanged() const
+const bool FQuadTreeObserver::HasDirectionChanged() const
 {
     return bDirectionDirty;
 }
 
-const FVector& FQuadTreeViewer::GetDirection() const
+const FVector& FQuadTreeObserver::GetDirection() const
 {
     return Direction;
 }
 
-void FQuadTreeViewer::SetDirection(const FVector& Direction)
+void FQuadTreeObserver::SetDirection(const FVector& Direction)
 {
     if (!this->Direction.Equals(Direction))
     {
@@ -70,14 +70,14 @@ void FQuadTreeViewer::SetDirection(const FVector& Direction)
     }
 }
 
-const FBoxSphereBounds& FQuadTreeViewer::GetRange(const uint8& Level) const
+const FBoxSphereBounds& FQuadTreeObserver::GetRange(const uint8& Level) const
 {
     check(Level < Ranges.Num());
 
     return Ranges[Level];
 }
 
-void FQuadTreeViewer::SetRanges(const TArray<float>& Ranges)
+void FQuadTreeObserver::SetRanges(const TArray<float>& Ranges)
 {
     this->Ranges.Empty(Ranges.Num());
     for (auto i = 0; i < Ranges.Num(); i++)
@@ -88,13 +88,13 @@ void FQuadTreeViewer::SetRanges(const TArray<float>& Ranges)
     }
 }
 
-void FQuadTreeViewer::PostSelect()
+void FQuadTreeObserver::PostSelect()
 {
     bLocationDirty = false;
     bDirectionDirty = false;
 }
 
-void FQuadTreeViewer::Draw(const UWorld* World)
+void FQuadTreeObserver::Draw(const UWorld* World)
 {
 #if !UE_BUILD_SHIPPING
     static const FQuat Rotation = FQuat::MakeFromEuler(FVector(0, 90, 0));

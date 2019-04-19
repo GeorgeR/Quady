@@ -3,7 +3,8 @@
 #if !UE_BUILD_SHIPPING
 #include "DrawDebugHelpers.h"
 #endif
-#include "QuadTreeViewer.h"
+
+#include "QuadTreeObserver.h"
 
 #define LOCTEXT_NAMESPACE "Quady"
 
@@ -33,18 +34,18 @@ FQuadTreeNode::~FQuadTreeNode()
     Children.Empty();
 }
 
-bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeViewer>& Viewer)
+bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer)
 {
-    auto RangeSphere = Viewer->GetRange(Level);
+    auto RangeSphere = Observer->GetRange(Level);
 
-    if (Viewer->HasLocationChanged())
+    if (Observer->HasLocationChanged())
     {
         SetSelected(IsInSphere(RangeSphere.GetSphere()));
         if(!bIsSelected) return false;
     }
     
     /* TODO: Frustum representation */
-    if (Viewer->HasDirectionChanged())
+    if (Observer->HasDirectionChanged())
     {
         SetSelected(IsInFrustum());
         if(!bIsSelected) return false;
@@ -57,9 +58,9 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeViewer>& Viewer)
     }
     else
     {
-        auto bAnyChildWasSplit = AnyChild([&Viewer](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
+        auto bAnyChildWasSplit = AnyChild([&Observer](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
         {
-            return Child->Select(Viewer);
+            return Child->Select(Observer);
         }, false);
 
         /* Constrain, ensures no non-square spaces */
@@ -70,7 +71,7 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeViewer>& Viewer)
     return true;
 }
 
-bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeViewer>& Viewer, TSet<FQuadTreeNodeSelectionEvent>& SelectionEvents)
+bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQuadTreeNodeSelectionEvent>& SelectionEvents)
 {
     auto RangeSphere = Viewer->GetRange(Level);
     auto Event = FQuadTreeNodeSelectionEvent(Key);
@@ -203,13 +204,13 @@ void FQuadTreeNode::Empty()
 {
 }
 
-void FQuadTreeNode::SetSelected(const bool bIsSelected, const bool bRecursive /*= false*/)
+void FQuadTreeNode::SetSelected(const bool InIsSelected, const bool bRecursive /*= false*/)
 {
-    this->bIsSelected = bIsSelected;
+    this->bIsSelected = InIsSelected;
 
     if(bRecursive)
-        ForEachChild([&bIsSelected, &bRecursive](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
-            Child->SetSelected(bIsSelected, bRecursive);
+        ForEachChild([&InIsSelected, &bRecursive](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
+            Child->SetSelected(InIsSelected, bRecursive);
         });
 }
 

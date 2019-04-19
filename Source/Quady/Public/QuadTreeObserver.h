@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-class QUADY_API FQuadTreeViewer
+class QUADY_API FQuadTreeObserver
 {
 public:
     const bool HasLocationChanged() const;

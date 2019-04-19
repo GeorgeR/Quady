@@ -2,12 +2,13 @@
 
 #include "CoreMinimal.h"
 #include "Array.h"
+
 #include "QuadTreeNode.h"
 
 #include "QuadTree.generated.h"
 
 class UWorld;
-class FQuadTreeViewer;
+class FQuadTreeObserver;
 
 UCLASS(BlueprintType)
 class QUADY_API UQuadTree
@@ -52,7 +53,7 @@ private:
     TArray<FBoxSphereBounds> PreviousViewLocations;
 
     uint8 LevelCount;
-    TSharedPtr<FQuadTreeViewer> Viewer;
+    TSharedPtr<FQuadTreeObserver> Observer;
 
 #if WITH_EDITOR
     /* For drawing */

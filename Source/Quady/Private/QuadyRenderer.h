@@ -10,26 +10,27 @@
 #include "UniformBuffer.h"
 #include "VertexFactory.h"
 #include "MaterialShared.h"
-#include "QuadyMeshProxy.h"
 #include "RendererInterface.h"
 #include "MeshBatch.h"
 #include "SceneManagement.h"
 #include "Engine/MapBuildDataRegistry.h"
-#include "QuadyMeshComponent.h"
 #include "Materials/MaterialInterface.h"
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
 #include "StaticMeshResources.h"
 
+#include "QuadyMeshProxy.h"
+#include "QuadyMeshComponent.h"
+
 #define QUADY_LOD_LEVELS 8
 
 /** The uniform shader parameters for a Quady draw call. */
-BEGIN_UNIFORM_BUFFER_STRUCT(FQuadyUniformShaderParameters, QUADY_API)
+BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FQuadyUniformShaderParameters, QUADY_API)
     /** vertex shader parameters */
-    UNIFORM_MEMBER(FVector4, SubsectionSizeVertsLayerUVPan)
-    UNIFORM_MEMBER(FVector4, SubsectionOffsetParams)
-    UNIFORM_MEMBER(FMatrix, LocalToWorldNoScaling)
-END_UNIFORM_BUFFER_STRUCT(FLandscapeUniformShaderParameters)
+	UNIFORM_MEMBER(FVector4, SubsectionSizeVertsLayerUVPan)
+	UNIFORM_MEMBER(FVector4, SubsectionOffsetParams)
+	UNIFORM_MEMBER(FMatrix, LocalToWorldNoScaling)
+END_GLOBAL_SHADER_PARAMETER_STRUCT(FLandscapeUniformShaderParameters)
 
 /* Data needed for the quady vertex factory to set the render state for an individual batch element */
 struct FQuadyBatchElementParameters

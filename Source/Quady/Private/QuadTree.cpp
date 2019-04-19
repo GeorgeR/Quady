@@ -1,10 +1,11 @@
 #include "QuadTree.h"
 
-#include "Quady.h"
 #include "ContentStreaming.h"
 #include "AssertionMacros.h"
-#include "QuadTreeViewer.h"
 #include "Async.h"
+
+#include "Quady.h"
+#include "QuadTreeObserver.h"
 
 #if !UE_BUILD_SHIPPING
 #include "DrawDebugHelpers.h"
@@ -20,7 +21,7 @@ UQuadTree::UQuadTree()
     MaximumQuadSize(102400),
     ViewerRadiusMultiplier(1.0f)
 {
-    Viewer = MakeShared<FQuadTreeViewer>();
+    Observer = MakeShared<FQuadTreeObserver>();
     Build();
 }
 
@@ -43,7 +44,7 @@ void UQuadTree::Build()
         Range <<= 1;
     }
 
-    Viewer->SetRanges(Ranges);
+    Observer->SetRanges(Ranges);
 
     auto HalfSize = MaximumQuadSize * 0.5f;;
     FBox RootBounds(FVector(-HalfSize, -HalfSize, -HalfSize), FVector(HalfSize, HalfSize, HalfSize));
@@ -72,14 +73,14 @@ void UQuadTree::Update()
     // NOTE: Only supports single viewer for now
 
     auto& FirstViewer = PreviousViewLocations[0];
-    Viewer->SetLocation(FirstViewer.Origin);
+    Observer->SetLocation(FirstViewer.Origin);
 
-    if (Viewer->HasLocationChanged() || Viewer->HasDirectionChanged())
+    if (Observer->HasLocationChanged() || Observer->HasDirectionChanged())
     {
-        Root.Select(Viewer);
+        Root.Select(Observer);
     }
 
-    Viewer->PostSelect();
+    Observer->PostSelect();
 
 #if WITH_EDITOR
     PrevousViewLocation = FirstViewer.GetSphere().Center;
@@ -90,7 +91,7 @@ void UQuadTree::Draw(const UWorld* World)
 {
     check(World);
 
-    Viewer->Draw(World);
+    Observer->Draw(World);
     Root.Draw(World);
 }
 
