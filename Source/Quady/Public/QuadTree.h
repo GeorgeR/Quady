@@ -17,9 +17,11 @@ class QUADY_API UQuadTree
     GENERATED_BODY()
 
 public:
-    /* NOTE: Not Implemented */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "QuadTree")
     bool bFloatingOrigin;
+
+	UPROPERTY(BlueprintReadOnly, Transient)
+	FVector TargetOrigin;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "QuadTree")
     int32 MinimumQuadSize;
@@ -34,6 +36,8 @@ public:
 
     UQuadTree();
 
+	virtual void PostLoad() override;
+
     /* Validate and construct QuadTree */
     UFUNCTION(BlueprintCallable, Category = "QuadTree")
     virtual void Build();
@@ -42,12 +46,16 @@ public:
     UFUNCTION(BlueprintCallable, Category = "QuadTree")
     virtual void Update();
 
+	virtual void Update(TArray<TSharedPtr<FQuadTreeNode>>& OutSelected);
+
     /* Draw Quads */
-    virtual void Draw(const UWorld* World);
+    virtual void Draw(const UWorld* World, const TArray<TSharedPtr<FQuadTreeNode>>& Nodes);
 
     UFUNCTION(BlueprintCallable, Category = "QuadTree", meta = (WorldContext = "WorldContextObject"))
-    void Draw(UObject* WorldContextObject) { Draw(WorldContextObject->GetWorld()); }
-    
+    void Draw(UObject* WorldContextObject);
+
+	TArray<TSharedPtr<FQuadTreeNode>> GetSelectedNodes();
+
 private:
     UPROPERTY(Transient)
     TArray<FBoxSphereBounds> PreviousViewLocations;

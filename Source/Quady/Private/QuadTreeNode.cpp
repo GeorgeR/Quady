@@ -5,6 +5,7 @@
 #endif
 
 #include "QuadTreeObserver.h"
+#include "Engine/Engine.h"
 
 #define LOCTEXT_NAMESPACE "Quady"
 
@@ -36,20 +37,28 @@ FQuadTreeNode::~FQuadTreeNode()
 
 bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer)
 {
-    auto RangeSphere = Observer->GetRange(Level);
+    auto RangeBounds = Observer->GetRange(Level);
 
-    if (Observer->HasLocationChanged())
+	auto bIsInSphere = IsInSphere(RangeBounds.GetSphere());
+	if (!bIsInSphere)
+		return false;
+	
+	// TODO: Revisit check
+    /*if (Observer->HasLocationChanged())
     {
-        SetSelected(IsInSphere(RangeSphere.GetSphere()));
-        if(!bIsSelected) return false;
-    }
-    
-    /* TODO: Frustum representation */
-    if (Observer->HasDirectionChanged())
-    {
-        SetSelected(IsInFrustum());
-        if(!bIsSelected) return false;
-    }
+		
+    }*/
+
+	//auto bIsInFrustum = IsInFrustum();
+	//if (!bIsInFrustum)
+	//	return true;
+
+	// TODO: Revisit check
+    ///* TODO: Frustum representation */
+    //if (Observer->HasDirectionChanged())
+    //{
+    //    if(!bIsSelected) return true;
+    //}
 
     if(Level == 0)
     {
@@ -58,17 +67,93 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer)
     }
     else
     {
-        auto bAnyChildWasSplit = AnyChild([&Observer](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
-        {
-            return Child->Select(Observer);
-        }, false);
+		if (!IsInSphere(Observer->GetRange(Level - 1).GetSphere()))
+		{
+			GEngine->AddOnScreenDebugMessage(0, 1, FColor::Red, TEXT("Hat"));
+			SetSelected(true);
+		}
+		else
+		{
+			//auto bAnyChildWasSplit = AnyChild([&Observer](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
+			//{
+			//	return Child->Select(Observer);
+			//}, false);
 
-        /* Constrain, ensures no non-square spaces */
-        if (bAnyChildWasSplit)
-            ForEachChild([](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) { Child->SetSelected(true); });
+
+
+			ForEachChild([&](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
+				if (!Child->Select(Observer))
+				{
+					Child->SetSelected(true);
+				}
+			});
+
+			///* Constrain, ensures no non-square spaces */
+			//if (bAnyChildWasSplit)
+			//	ForEachChild([](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) { Child->SetSelected(true); });
+		}
     }
 
     return true;
+}
+
+bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TArray<TSharedPtr<FQuadTreeNode>>& OutSelected)
+{
+	auto RangeBounds = Observer->GetRange(Level);
+
+	auto bIsInSphere = IsInSphere(RangeBounds.GetSphere());
+	if (!bIsInSphere)
+		return false;
+
+	// TODO: Revisit check
+	/*if (Observer->HasLocationChanged())
+	{
+
+	}*/
+
+	//auto bIsInFrustum = IsInFrustum();
+	//if (!bIsInFrustum)
+	//	return true;
+
+	// TODO: Revisit check
+	///* TODO: Frustum representation */
+	//if (Observer->HasDirectionChanged())
+	//{
+	//    if(!bIsSelected) return true;
+	//}
+
+	if (Level == 0)
+	{
+		OutSelected.Add(this->AsShared());
+		return true;
+	}
+	else
+	{
+		if (Level < Observer->GetLevelNum() - 1 && !IsInSphere(Observer->GetRange(Level + 1).GetSphere()))
+		{
+			OutSelected.Add(this->AsShared());
+		}
+		else
+		{
+			//auto bAnyChildWasSplit = AnyChild([&Observer](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
+			//{
+			//	return Child->Select(Observer);
+			//}, false);
+
+			ForEachChild([&](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
+				if (!Child->Select(Observer, OutSelected))
+				{
+					OutSelected.Add(Child);
+				}
+			});
+
+			///* Constrain, ensures no non-square spaces */
+			//if (bAnyChildWasSplit)
+			//	ForEachChild([](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) { Child->SetSelected(true); });
+		}
+	}
+
+	return true;
 }
 
 bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQuadTreeNodeSelectionEvent>& SelectionEvents)
@@ -141,7 +226,9 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQu
 
 const bool FQuadTreeNode::IsInSphere(const FSphere& Sphere)
 {
-    return FBoxSphereBounds::BoxesIntersect(Bounds, Sphere);
+	return FMath::SphereAABBIntersection(Sphere, Bounds);
+
+    //return FBoxSphereBounds::BoxesIntersect(Bounds, Sphere);
 }
 
 const bool FQuadTreeNode::IsInFrustum()
@@ -149,26 +236,47 @@ const bool FQuadTreeNode::IsInFrustum()
     return true;
 }
 
-void FQuadTreeNode::Draw(const UWorld* World)
+void FQuadTreeNode::Draw(const UWorld* World, const FVector& Origin)
 {
 #if !UE_BUILD_SHIPPING
-    if (!bIsSelected)
-        return;
+	//if (bIsSelected)
+	//{
+		auto Center = Bounds.GetCenter();
+		Center += Origin;
 
-    auto Center = Bounds.GetCenter();
-    auto Extent = Bounds.GetExtent();
+		auto Extent = Bounds.GetExtent();
 
-    Center.Z = Level * 100.0f;
+		//Center.Z = Level * 100.0f;
 
-    //DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::White);
+		//DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::White);
 
-    Extent.Z = 0.0f;
-    DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Red);
+		Extent.Z = 0.0f;
+		DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Red);
+	//}
 
-    ForEachChild([&World](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
-        Child->Draw(World);
-    });
+    //ForEachChild([&World, &Origin](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
+    //    Child->Draw(World, Origin);
+    //});
 #endif
+}
+
+void FQuadTreeNode::OnOriginChanged(const FQuadTreeNode* Parent, const FVector& NewOrigin, const bool bRecursive /*= true*/)
+{
+	auto Center = Bounds.GetCenter();
+	Center += NewOrigin;
+	Bounds = Bounds.MoveTo(Center);
+
+	if (Parent == nullptr)
+		Key = FQuadTreeNodeKey(Bounds.Min, Level);
+	else
+		Key = FQuadTreeNodeKey(Parent->Key, Bounds.Min, Quadrant, Level);
+
+	if (bRecursive)
+	{
+		ForEachChild([&](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
+			Child->OnOriginChanged(Parent, NewOrigin, bRecursive);
+		});
+	}
 }
 
 bool FQuadTreeNode::Split()

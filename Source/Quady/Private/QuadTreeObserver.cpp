@@ -7,6 +7,18 @@
 
 #define LOCTEXT_NAMESPACE "Quady"
 
+void FQuadTreeObserver::SetOrigin(const FVector& Origin)
+{
+	if (!this->Origin.Equals(Origin))
+	{
+		this->Origin = Origin;
+		this->bLocationDirty = true;
+
+		for (auto& Range : Ranges)
+			Range.Origin = GetLocation();
+	}
+}
+
 const bool FQuadTreeObserver::HasLocationChanged(bool bClearFlag /*= false*/)
 {
     if (bClearFlag && bLocationDirty)
@@ -23,9 +35,9 @@ const bool FQuadTreeObserver::HasLocationChanged() const
     return bLocationDirty;
 }
 
-const FVector& FQuadTreeObserver::GetLocation() const
+const FVector FQuadTreeObserver::GetLocation(bool bRelativeToOrigin) const
 {
-    return Location;
+    return bRelativeToOrigin ? Location - Origin : Location;
 }
 
 void FQuadTreeObserver::SetLocation(const FVector& Location)
@@ -36,7 +48,7 @@ void FQuadTreeObserver::SetLocation(const FVector& Location)
         this->bLocationDirty = true;
 
         for (auto& Range : Ranges)
-            Range.Origin = Location;
+            Range.Origin = Location - Origin;
     }
 }
 
@@ -100,10 +112,57 @@ void FQuadTreeObserver::Draw(const UWorld* World)
     static const FQuat Rotation = FQuat::MakeFromEuler(FVector(0, 90, 0));
     for (auto& Range : Ranges)
     {
-        auto Transform = FTransform(Rotation, Range.Origin, FVector::OneVector);
+        auto Transform = FTransform(Rotation, Range.Origin + Origin, FVector::OneVector);
         DrawDebugCircle(World, Transform.ToMatrixNoScale(), Range.SphereRadius, 64, FColor::Green);
     }
 #endif
+}
+
+void FQuadTreeObserver::UpdateFrustum()
+{
+	bool bIsStereo = false;
+	if(bIsStereo)
+	{
+		const FMatrix LeftEyeViewProjection;
+		const FMatrix RightEyeViewProjection;
+
+		FConvexVolume LeftEyeBounds, RightEyeBounds;
+		GetViewFrustumBounds(LeftEyeBounds, LeftEyeViewProjection, false);
+		GetViewFrustumBounds(RightEyeBounds, RightEyeViewProjection, false);
+
+		Frustum.Planes.Empty(5);
+		Frustum.Planes.Add(LeftEyeBounds.Planes[0]);
+		Frustum.Planes.Add(RightEyeBounds.Planes[1]);
+		Frustum.Planes.Add(LeftEyeBounds.Planes[2]);
+		Frustum.Planes.Add(LeftEyeBounds.Planes[3]);
+		Frustum.Planes.Add(LeftEyeBounds.Planes[4]);
+		Frustum.Init();
+	}
+	else
+	{
+		const FMatrix ViewProjection;
+		GetViewFrustumBounds(Frustum, ViewProjection, false);
+	}
+
+	bool bIsPerspectiveProjection = false;
+	if (bIsPerspectiveProjection)
+	{
+		if (Frustum.Planes.Num() == 5)
+		{
+			Frustum.Planes.Pop(false);
+
+			FMatrix ThreePlanes;
+			ThreePlanes.SetIdentity();
+			ThreePlanes.SetAxes(&Frustum.Planes[0], &Frustum.Planes[1], &Frustum.Planes[2]);
+			auto ProjectionOrigin = ThreePlanes.Inverse().GetTransposed().TransformVector(FVector(Frustum.Planes[0].W, Frustum.Planes[1].W, Frustum.Planes[2].W));
+			for (auto i = 0; i < Frustum.Planes.Num(); i++)
+			{
+				auto Source = Frustum.Planes[i];
+				auto Normal = Source.GetSafeNormal();
+				Frustum.Planes[i] = FPlane(Normal, Normal | ProjectionOrigin);
+			}
+		}
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

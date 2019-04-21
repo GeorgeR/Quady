@@ -1,8 +1,10 @@
 #include "QuadTree.h"
 
+#include "GameFramework/Actor.h"
 #include "ContentStreaming.h"
 #include "AssertionMacros.h"
 #include "Async.h"
+#include "UObjectBase.h"
 
 #include "Quady.h"
 #include "QuadTreeObserver.h"
@@ -18,11 +20,19 @@ DECLARE_CYCLE_STAT(TEXT("QuadTree Update"), STAT_QuadTreeUpdate, STATGROUP_Quady
 UQuadTree::UQuadTree()
     : bFloatingOrigin(false),
     MinimumQuadSize(1600),
-    MaximumQuadSize(102400),
+    MaximumQuadSize(102400 * 4),
     ViewerRadiusMultiplier(1.0f)
 {
     Observer = MakeShared<FQuadTreeObserver>();
-    Build();
+
+	Build();
+}
+
+void UQuadTree::PostLoad()
+{
+	Super::PostLoad();
+
+	Build();
 }
 
 void UQuadTree::Build()
@@ -37,7 +47,7 @@ void UQuadTree::Build()
     
     TArray<float> Ranges;
     Ranges.Empty(LevelCount);
-    auto Range = MinimumQuadSize >> 1;
+    auto Range = MinimumQuadSize;
     for (auto i = 0; i < LevelCount; i++)
     {
         Ranges.Add(Range);
@@ -53,46 +63,112 @@ void UQuadTree::Build()
 
 void UQuadTree::Update()
 {
-    FStreamingManagerCollection& StreamingManager = IStreamingManager::Get();
-    auto ViewCount = StreamingManager.GetNumViews();
-    if (ViewCount <= 0) // Early out
-        return;
+	TArray<TSharedPtr<FQuadTreeNode>> Selection;
+	Update(Selection);
+}
 
-    PreviousViewLocations.Reset(ViewCount);
-    for (auto i = 0; i < ViewCount; i++)
-    {
-        auto& ViewInfo = StreamingManager.GetViewInformation(i);
-        auto ViewOrigin = ViewInfo.ViewOrigin;
-        ViewOrigin.Z = 0.0f;
-        auto Sphere = FSphere(ViewOrigin, MinimumQuadSize * ViewerRadiusMultiplier);
-        PreviousViewLocations.Add(FBoxSphereBounds(Sphere));
-    }
+void UQuadTree::Update(TArray<TSharedPtr<FQuadTreeNode>>& OutSelected)
+{
+	FStreamingManagerCollection& StreamingManager = IStreamingManager::Get();
+	auto ViewCount = StreamingManager.GetNumViews();
+	if (ViewCount <= 0) // Early out
+		return;
 
-    SCOPE_CYCLE_COUNTER(STAT_QuadTreeUpdate);
+	PreviousViewLocations.Reset(ViewCount);
+	for (auto i = 0; i < ViewCount; i++)
+	{
+		auto& ViewInfo = StreamingManager.GetViewInformation(i);
+		auto ViewOrigin = ViewInfo.ViewOrigin;
+		ViewOrigin.Z = 0.0f;
+		auto Sphere = FSphere(ViewOrigin, MinimumQuadSize * ViewerRadiusMultiplier);
+		PreviousViewLocations.Add(FBoxSphereBounds(Sphere));
+	}
 
-    // NOTE: Only supports single viewer for now
+	SCOPE_CYCLE_COUNTER(STAT_QuadTreeUpdate);
 
-    auto& FirstViewer = PreviousViewLocations[0];
-    Observer->SetLocation(FirstViewer.Origin);
+	// NOTE: Only supports single viewer for now
+	auto& FirstViewer = PreviousViewLocations[0];
+	Observer->SetLocation(FirstViewer.Origin);
 
-    if (Observer->HasLocationChanged() || Observer->HasDirectionChanged())
-    {
-        Root.Select(Observer);
-    }
+	auto bOriginChanged = false;
+	if (bFloatingOrigin)
+	{
+		if (GetOuter())
+		{
+			if (auto Outer = Cast<AActor>(GetOuter()))
+			{
+				auto PreviousOrigin = TargetOrigin;
 
-    Observer->PostSelect();
+				auto LocationZ = Outer->GetActorLocation().Z;
+
+				TargetOrigin = Observer->GetLocation(false);
+
+				const auto SnapRange = MaximumQuadSize >> 2;
+
+				TargetOrigin.Z = 0.0f;
+				TargetOrigin.X = FMath::GridSnap(TargetOrigin.X, SnapRange);
+				TargetOrigin.Y = FMath::GridSnap(TargetOrigin.Y, SnapRange);
+
+				TargetOrigin.Z = LocationZ;
+
+				if (PreviousOrigin != TargetOrigin)
+				{
+					bOriginChanged = true;
+					Observer->SetOrigin(TargetOrigin);
+				}
+			}
+		}
+	}
+
+	if (bOriginChanged)
+	{
+		Root.OnOriginChanged(nullptr, TargetOrigin);
+	}
+
+	if (Observer->HasLocationChanged() || Observer->HasDirectionChanged())
+	{
+		//Root.ClearSelected();
+		OutSelected.Empty(OutSelected.Num());
+		Root.Select(Observer, OutSelected);
+	}
+
+	Observer->PostSelect();
 
 #if WITH_EDITOR
-    PrevousViewLocation = FirstViewer.GetSphere().Center;
+	PrevousViewLocation = FirstViewer.GetSphere().Center;
 #endif
 }
 
-void UQuadTree::Draw(const UWorld* World)
+void UQuadTree::Draw(const UWorld* World, const TArray<TSharedPtr<FQuadTreeNode>>& Nodes)
 {
     check(World);
 
+#if !UE_BUILD_SHIPPING
+	auto Center = TargetOrigin;
+	auto Extent = FVector(MaximumQuadSize >> 1, MaximumQuadSize >> 1, 0.0f);
+
+	DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Cyan);
+#endif
+
     Observer->Draw(World);
-    Root.Draw(World);
+
+	if(Nodes.Num() > 0)
+		for (auto Node : Nodes)
+			Node->Draw(World, TargetOrigin);
+}
+
+void UQuadTree::Draw(UObject* WorldContextObject)
+{
+	TArray<TSharedPtr<FQuadTreeNode>> Nodes;
+	Draw(WorldContextObject->GetWorld(), Nodes);
+}
+
+TArray<TSharedPtr<FQuadTreeNode>> UQuadTree::GetSelectedNodes()
+{
+	TArray<TSharedPtr<FQuadTreeNode>> Result;
+
+
+	return Result;
 }
 
 #undef LOCTEXT_NAMESPACE
