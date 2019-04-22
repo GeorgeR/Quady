@@ -17,6 +17,9 @@ class QUADY_API UQuadTree
     GENERATED_BODY()
 
 public:
+	UPROPERTY()
+	USceneComponent* TransformComponent;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "QuadTree")
     bool bFloatingOrigin;
 
@@ -53,8 +56,6 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "QuadTree", meta = (WorldContext = "WorldContextObject"))
     void Draw(UObject* WorldContextObject);
-
-	TArray<TSharedPtr<FQuadTreeNode>> GetSelectedNodes();
 
 private:
     UPROPERTY(Transient)

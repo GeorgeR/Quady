@@ -18,7 +18,7 @@
 DECLARE_CYCLE_STAT(TEXT("QuadTree Update"), STAT_QuadTreeUpdate, STATGROUP_Quady);
 
 UQuadTree::UQuadTree()
-    : bFloatingOrigin(false),
+    : bFloatingOrigin(true),
     MinimumQuadSize(1600),
     MaximumQuadSize(102400 * 4),
     ViewerRadiusMultiplier(1.0f)
@@ -91,32 +91,26 @@ void UQuadTree::Update(TArray<TSharedPtr<FQuadTreeNode>>& OutSelected)
 	Observer->SetLocation(FirstViewer.Origin);
 
 	auto bOriginChanged = false;
-	if (bFloatingOrigin)
+	if (bFloatingOrigin && TransformComponent != nullptr)
 	{
-		if (GetOuter())
+		auto PreviousOrigin = TargetOrigin;
+
+		auto LocationZ = TransformComponent->GetComponentLocation().Z;
+
+		TargetOrigin = Observer->GetLocation(false);
+
+		const auto SnapRange = MaximumQuadSize >> 2;
+
+		TargetOrigin.Z = 0.0f;
+		TargetOrigin.X = FMath::GridSnap(TargetOrigin.X, SnapRange);
+		TargetOrigin.Y = FMath::GridSnap(TargetOrigin.Y, SnapRange);
+
+		TargetOrigin.Z = LocationZ;
+
+		if (PreviousOrigin != TargetOrigin)
 		{
-			if (auto Outer = Cast<AActor>(GetOuter()))
-			{
-				auto PreviousOrigin = TargetOrigin;
-
-				auto LocationZ = Outer->GetActorLocation().Z;
-
-				TargetOrigin = Observer->GetLocation(false);
-
-				const auto SnapRange = MaximumQuadSize >> 2;
-
-				TargetOrigin.Z = 0.0f;
-				TargetOrigin.X = FMath::GridSnap(TargetOrigin.X, SnapRange);
-				TargetOrigin.Y = FMath::GridSnap(TargetOrigin.Y, SnapRange);
-
-				TargetOrigin.Z = LocationZ;
-
-				if (PreviousOrigin != TargetOrigin)
-				{
-					bOriginChanged = true;
-					Observer->SetOrigin(TargetOrigin);
-				}
-			}
+			bOriginChanged = true;
+			Observer->SetOrigin(TargetOrigin);
 		}
 	}
 
@@ -127,7 +121,6 @@ void UQuadTree::Update(TArray<TSharedPtr<FQuadTreeNode>>& OutSelected)
 
 	if (Observer->HasLocationChanged() || Observer->HasDirectionChanged())
 	{
-		//Root.ClearSelected();
 		OutSelected.Empty(OutSelected.Num());
 		Root.Select(Observer, OutSelected);
 	}
@@ -161,14 +154,6 @@ void UQuadTree::Draw(UObject* WorldContextObject)
 {
 	TArray<TSharedPtr<FQuadTreeNode>> Nodes;
 	Draw(WorldContextObject->GetWorld(), Nodes);
-}
-
-TArray<TSharedPtr<FQuadTreeNode>> UQuadTree::GetSelectedNodes()
-{
-	TArray<TSharedPtr<FQuadTreeNode>> Result;
-
-
-	return Result;
 }
 
 #undef LOCTEXT_NAMESPACE

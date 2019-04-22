@@ -12,13 +12,9 @@
 FQuadTreeNode::FQuadTreeNode(const FQuadTreeNode* Parent, EQuadrant Quadrant, const FBox& Bounds, const uint8 Level)
     : Quadrant(Quadrant),
     Bounds(Bounds),
-    Level(Level),
-    bIsSelected(false)
+    Level(Level)
 {
-    if (Parent == nullptr)
-        Key = FQuadTreeNodeKey(Bounds.Min, Level);
-    else
-        Key = FQuadTreeNodeKey(Parent->Key, Bounds.Min, Quadrant, Level);
+	UpdateKey(Parent);
 
     if (Level == 0)
         Children.Empty();
@@ -33,68 +29,6 @@ FQuadTreeNode::~FQuadTreeNode()
     });
 
     Children.Empty();
-}
-
-bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer)
-{
-    auto RangeBounds = Observer->GetRange(Level);
-
-	auto bIsInSphere = IsInSphere(RangeBounds.GetSphere());
-	if (!bIsInSphere)
-		return false;
-	
-	// TODO: Revisit check
-    /*if (Observer->HasLocationChanged())
-    {
-		
-    }*/
-
-	//auto bIsInFrustum = IsInFrustum();
-	//if (!bIsInFrustum)
-	//	return true;
-
-	// TODO: Revisit check
-    ///* TODO: Frustum representation */
-    //if (Observer->HasDirectionChanged())
-    //{
-    //    if(!bIsSelected) return true;
-    //}
-
-    if(Level == 0)
-    {
-        SetSelected(true);
-        return true;
-    }
-    else
-    {
-		if (!IsInSphere(Observer->GetRange(Level - 1).GetSphere()))
-		{
-			GEngine->AddOnScreenDebugMessage(0, 1, FColor::Red, TEXT("Hat"));
-			SetSelected(true);
-		}
-		else
-		{
-			//auto bAnyChildWasSplit = AnyChild([&Observer](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
-			//{
-			//	return Child->Select(Observer);
-			//}, false);
-
-
-
-			ForEachChild([&](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
-				if (!Child->Select(Observer))
-				{
-					Child->SetSelected(true);
-				}
-			});
-
-			///* Constrain, ensures no non-square spaces */
-			//if (bAnyChildWasSplit)
-			//	ForEachChild([](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) { Child->SetSelected(true); });
-		}
-    }
-
-    return true;
 }
 
 bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TArray<TSharedPtr<FQuadTreeNode>>& OutSelected)
@@ -156,12 +90,12 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TArray
 	return true;
 }
 
-bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQuadTreeNodeSelectionEvent>& SelectionEvents)
+bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TSet<FQuadTreeNodeSelectionEvent>& SelectionEvents)
 {
-    auto RangeSphere = Viewer->GetRange(Level);
+    auto RangeSphere = Observer->GetRange(Level);
     auto Event = FQuadTreeNodeSelectionEvent(Key);
 
-    if (Viewer->HasLocationChanged())
+    if (Observer->HasLocationChanged())
     {
         bool bIsInSphere = IsInSphere(RangeSphere.GetSphere());
         if (bIsInSphere)
@@ -169,20 +103,16 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQu
         else
             Event.Type |= EQuadTreeNodeSelectionEventType::OutOfRange;
 
-        SetSelected(bIsInSphere);
-        
-        if (!bIsSelected)
-        {
-            /* TODO: Get events */
-            SetSelected(false, true);
-
-            SelectionEvents.Add(MoveTemp(Event));
-            return false;
-        }
+		
+		if (!bIsInSphere)
+		{
+			SelectionEvents.Add(MoveTemp(Event));
+			return false;
+		}
     }
 
     /* TODO: Frustum representation */
-    if (Viewer->HasDirectionChanged())
+    if (Observer->HasDirectionChanged())
     {
         bool bIsInFrustum = IsInFrustum();
         if (bIsInFrustum)
@@ -190,35 +120,27 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQu
         else
             Event.Type |= EQuadTreeNodeSelectionEventType::OutOfFrustum;
 
-        SetSelected(bIsInFrustum);
-        
-        if (!bIsSelected)
+        if (!bIsInFrustum)
         {
-            /* TODO: Get events */
-            SetSelected(false, true);
-
             SelectionEvents.Add(MoveTemp(Event));
-            return false;
+            return true;
         }
     }
 
     if (Level == 0)
     {
-        SetSelected(true);
-
         SelectionEvents.Add(MoveTemp(Event));
         return true;
     }
     else
     {
-        auto bAnyChildWasSplit = AnyChild([&Viewer, &SelectionEvents](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child)
-        {
-            return Child->Select(Viewer, SelectionEvents);
-        }, false);
-
-        /* Constrain, ensures no non-square spaces */
-        if (bAnyChildWasSplit)
-            ForEachChild([](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) { Child->SetSelected(true); });
+		ForEachChild([&](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
+			if (!Child->Select(Observer, SelectionEvents))
+			{
+				auto ChildEvent = FQuadTreeNodeSelectionEvent(Child->GetKey());
+				SelectionEvents.Add(ChildEvent);
+			}
+		});
     }
 
     return true;
@@ -227,8 +149,6 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Viewer, TSet<FQu
 const bool FQuadTreeNode::IsInSphere(const FSphere& Sphere)
 {
 	return FMath::SphereAABBIntersection(Sphere, Bounds);
-
-    //return FBoxSphereBounds::BoxesIntersect(Bounds, Sphere);
 }
 
 const bool FQuadTreeNode::IsInFrustum()
@@ -239,24 +159,13 @@ const bool FQuadTreeNode::IsInFrustum()
 void FQuadTreeNode::Draw(const UWorld* World, const FVector& Origin)
 {
 #if !UE_BUILD_SHIPPING
-	//if (bIsSelected)
-	//{
-		auto Center = Bounds.GetCenter();
-		Center += Origin;
+	auto Center = Bounds.GetCenter();
+	Center += Origin;
 
-		auto Extent = Bounds.GetExtent();
+	auto Extent = Bounds.GetExtent();
 
-		//Center.Z = Level * 100.0f;
-
-		//DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::White);
-
-		Extent.Z = 0.0f;
-		DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Red);
-	//}
-
-    //ForEachChild([&World, &Origin](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
-    //    Child->Draw(World, Origin);
-    //});
+	Extent.Z = 0.0f;
+	DrawDebugBox(World, Center, Extent, FQuat::Identity, FColor::Red);
 #endif
 }
 
@@ -266,10 +175,7 @@ void FQuadTreeNode::OnOriginChanged(const FQuadTreeNode* Parent, const FVector& 
 	Center += NewOrigin;
 	Bounds = Bounds.MoveTo(Center);
 
-	if (Parent == nullptr)
-		Key = FQuadTreeNodeKey(Bounds.Min, Level);
-	else
-		Key = FQuadTreeNodeKey(Parent->Key, Bounds.Min, Quadrant, Level);
+	UpdateKey(Parent);
 
 	if (bRecursive)
 	{
@@ -277,6 +183,14 @@ void FQuadTreeNode::OnOriginChanged(const FQuadTreeNode* Parent, const FVector& 
 			Child->OnOriginChanged(Parent, NewOrigin, bRecursive);
 		});
 	}
+}
+
+void FQuadTreeNode::UpdateKey(const FQuadTreeNode* Parent)
+{
+	if (Parent == nullptr)
+		Key = FQuadTreeNodeKey(Bounds.Min, Level);
+	else
+		Key = FQuadTreeNodeKey(Parent->Key, Bounds.Min, Quadrant, Level);
 }
 
 bool FQuadTreeNode::Split()
@@ -310,16 +224,7 @@ bool FQuadTreeNode::Split()
 
 void FQuadTreeNode::Empty()
 {
-}
-
-void FQuadTreeNode::SetSelected(const bool InIsSelected, const bool bRecursive /*= false*/)
-{
-    this->bIsSelected = InIsSelected;
-
-    if(bRecursive)
-        ForEachChild([&InIsSelected, &bRecursive](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {
-            Child->SetSelected(InIsSelected, bRecursive);
-        });
+	Children.Empty();
 }
 
 void FQuadTreeNode::ForEachChild(TFunction<void(EQuadrant, TSharedPtr<FQuadTreeNode>&)> Func)
