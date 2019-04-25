@@ -177,6 +177,9 @@ void FQuadTreeNode::OnOriginChanged(const FQuadTreeNode* Parent, const FVector& 
 
 	UpdateKey(Parent);
 
+	Center -= NewOrigin;
+	Bounds = Bounds.MoveTo(Center);
+
 	if (bRecursive)
 	{
 		ForEachChild([&](EQuadrant Quadrant, TSharedPtr<FQuadTreeNode>& Child) {

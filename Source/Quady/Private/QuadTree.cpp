@@ -79,7 +79,7 @@ void UQuadTree::Update(TArray<TSharedPtr<FQuadTreeNode>>& OutSelected)
 	{
 		auto& ViewInfo = StreamingManager.GetViewInformation(i);
 		auto ViewOrigin = ViewInfo.ViewOrigin;
-		ViewOrigin.Z = 0.0f;
+		//ViewOrigin.Z = 0.0f;
 		auto Sphere = FSphere(ViewOrigin, MinimumQuadSize * ViewerRadiusMultiplier);
 		PreviousViewLocations.Add(FBoxSphereBounds(Sphere));
 	}

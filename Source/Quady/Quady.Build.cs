@@ -26,5 +26,19 @@ public class Quady : ModuleRules
 			    "CoreUObject",
 			    "Engine",
             });
-	}
+
+        PrivateDependencyModuleNames.AddRange(
+            new string[] {
+                "RenderCore",
+            });
+
+        if (Target.bBuildEditor == true)
+        {
+            PrivateDependencyModuleNames.AddRange(
+                new string[] {
+                    "ContentBrowser",
+                    "UnrealEd",
+                });
+        }
+    }
 }
