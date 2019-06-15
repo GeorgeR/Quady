@@ -161,7 +161,7 @@ void UQuadTreeComponent::ArrangeQuads(const TArray<TSharedPtr<FQuadTreeNode>>& N
 		if (InstancedMesh->GetStaticMesh() == nullptr)
 			return;
 
-		// TODO: Don't reset, do delta update
+		// #todo Don't reset, do delta update
 		InstancedMesh->ClearInstances();
 	}
 

@@ -50,7 +50,7 @@ float4 NeighborSectionLod[4];
 
 float4x4 LocalToWorldNoScaling;
 
-// TODO: What is this?
+// #todo What is this?
 #if QUADY_XYOFFSET
 #define XYOFFSET_SCALE			(1.0f/256.f)
 Texture2D XYOffsetmapTexture;
@@ -67,7 +67,7 @@ struct FVertexFactoryInput
 #endif
 #else
 	float4 PackedPosition: ATTRIBUTE0; 
-	float4 LODHeights[2]: ATTRIBUTE1; // TODO: Is this landscape specific?  
+	float4 LODHeights[2]: ATTRIBUTE1; // #todo Is this landscape specific?  
 #endif
 };
 
@@ -162,7 +162,7 @@ float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIn
 
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-    // TODO: Quady's transform may change - does this need to be altered?
+    // #todo Quady's transform may change - does this need to be altered?
 	// Note we still use LocalToWorld. Landscape's transform never changes.
     float3 LocalPosition = GetLocalPosition(Intermediates);
     float3 RotatedPosition = INVARIANT(Primitive.LocalToWorld[0].xyz * LocalPosition.xxx + Primitive.LocalToWorld[1].xyz * LocalPosition.yyy + Primitive.LocalToWorld[2].xyz * LocalPosition.zzz);
@@ -326,7 +326,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
     Result.PreSkinnedPosition = Intermediates.LocalPosition.xyz;
     Result.PreSkinnedNormal = TangentToLocal[2].xyz;
 
-    // TODO: Quady's transform may change - does this need changing?
+    // #todo Quady's transform may change - does this need changing?
 	// Assumes no instancing and landscape's transform never change
     Result.PrevFrameLocalToWorld = Primitive.LocalToWorld;
 

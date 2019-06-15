@@ -39,7 +39,7 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TArray
 	if (!bIsInSphere)
 		return false;
 
-	// TODO: Revisit check
+	// #todo Revisit check
 	/*if (Observer->HasLocationChanged())
 	{
 
@@ -49,8 +49,8 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TArray
 	//if (!bIsInFrustum)
 	//	return true;
 
-	// TODO: Revisit check
-	///* TODO: Frustum representation */
+	// #todo Revisit check
+	///* #todo Frustum representation */
 	//if (Observer->HasDirectionChanged())
 	//{
 	//    if(!bIsSelected) return true;
@@ -111,7 +111,7 @@ bool FQuadTreeNode::Select(const TSharedPtr<FQuadTreeObserver>& Observer, TSet<F
 		}
     }
 
-    /* TODO: Frustum representation */
+    /* #todo Frustum representation */
     if (Observer->HasDirectionChanged())
     {
         bool bIsInFrustum = IsInFrustum();
