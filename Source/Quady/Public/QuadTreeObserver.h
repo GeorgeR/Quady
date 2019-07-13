@@ -6,28 +6,29 @@
 class QUADY_API FQuadTreeObserver
 {
 public:
-	void SetOrigin(const FVector& Origin);
+	FQuadTreeObserver() = default;
+	void SetOrigin(const FVector& InOrigin);
 
     const bool HasLocationChanged() const;
-    const bool HasLocationChanged(bool bClearFlag = false);
+    bool HasLocationChanged(bool bClearFlag = false);
     const FVector GetLocation(bool bRelativeToOrigin = true) const;
-    void SetLocation(const FVector& Location);
+    void SetLocation(const FVector& InLocation);
 
     const bool HasDirectionChanged() const;
     const bool HasDirectionChanged(bool bClearFlag = false);
     const FVector& GetDirection() const;
-    void SetDirection(const FVector& Direction);
+    void SetDirection(const FVector& InDirection);
 
 	const FConvexVolume& GetFrustum() const { return Frustum; }
 
-	const uint16 GetLevelNum() const { return Ranges.Num(); }
+    uint16 GetLevelNum() const { return Ranges.Num(); }
 
-    const FBoxSphereBounds& GetRange(const uint8& Level) const;
-    void SetRanges(const TArray<float>& Ranges);
+    const FBoxSphereBounds& GetRange(const uint8& InLevel) const;
+    void SetRanges(const TArray<float>& InRanges);
 
     void PostSelect();
 
-    void Draw(const UWorld* World);
+    void Draw(const UWorld* InWorld);
 
 private:
 	FVector Origin;

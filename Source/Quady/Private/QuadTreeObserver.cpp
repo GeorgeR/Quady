@@ -7,11 +7,11 @@
 
 #define LOCTEXT_NAMESPACE "Quady"
 
-void FQuadTreeObserver::SetOrigin(const FVector& Origin)
+void FQuadTreeObserver::SetOrigin(const FVector& InOrigin)
 {
-	if (!this->Origin.Equals(Origin))
+	if (!this->Origin.Equals(InOrigin))
 	{
-		this->Origin = Origin;
+		this->Origin = InOrigin;
 		this->bLocationDirty = true;
 
 		for (auto& Range : Ranges)
@@ -19,7 +19,7 @@ void FQuadTreeObserver::SetOrigin(const FVector& Origin)
 	}
 }
 
-const bool FQuadTreeObserver::HasLocationChanged(bool bClearFlag /*= false*/)
+bool FQuadTreeObserver::HasLocationChanged(bool bClearFlag /*= false*/)
 {
     if (bClearFlag && bLocationDirty)
     {
@@ -40,15 +40,15 @@ const FVector FQuadTreeObserver::GetLocation(bool bRelativeToOrigin) const
     return bRelativeToOrigin ? Location - Origin : Location;
 }
 
-void FQuadTreeObserver::SetLocation(const FVector& Location)
+void FQuadTreeObserver::SetLocation(const FVector& InLocation)
 {
-    if (!this->Location.Equals(Location))
+    if (!this->Location.Equals(InLocation))
     {
-        this->Location = Location;
+        this->Location = InLocation;
         this->bLocationDirty = true;
 
         for (auto& Range : Ranges)
-            Range.Origin = Location - Origin;
+            Range.Origin = InLocation - Origin;
     }
 }
 
@@ -73,28 +73,28 @@ const FVector& FQuadTreeObserver::GetDirection() const
     return Direction;
 }
 
-void FQuadTreeObserver::SetDirection(const FVector& Direction)
+void FQuadTreeObserver::SetDirection(const FVector& InDirection)
 {
-    if (!this->Direction.Equals(Direction))
+    if (!this->Direction.Equals(InDirection))
     {
-        this->Direction = Direction;
+        this->Direction = InDirection;
         this->bDirectionDirty = true;
     }
 }
 
-const FBoxSphereBounds& FQuadTreeObserver::GetRange(const uint8& Level) const
+const FBoxSphereBounds& FQuadTreeObserver::GetRange(const uint8& InLevel) const
 {
-    check(Level < Ranges.Num());
+    check(InLevel < Ranges.Num());
 
-    return Ranges[Level];
+    return Ranges[InLevel];
 }
 
-void FQuadTreeObserver::SetRanges(const TArray<float>& Ranges)
+void FQuadTreeObserver::SetRanges(const TArray<float>& InRanges)
 {
-    this->Ranges.Empty(Ranges.Num());
-    for (auto i = 0; i < Ranges.Num(); i++)
+    this->Ranges.Empty(InRanges.Num());
+    for (auto i = 0; i < InRanges.Num(); i++)
     {
-        auto RangeSphere = FSphere(Location, Ranges[i]);
+        auto RangeSphere = FSphere(Location, InRanges[i]);
         auto Range = FBoxSphereBounds(RangeSphere);
         this->Ranges.Emplace(Range);
     }
@@ -106,7 +106,7 @@ void FQuadTreeObserver::PostSelect()
     bDirectionDirty = false;
 }
 
-void FQuadTreeObserver::Draw(const UWorld* World)
+void FQuadTreeObserver::Draw(const UWorld* InWorld)
 {
 #if !UE_BUILD_SHIPPING
     static const FQuat Rotation = FQuat::MakeFromEuler(FVector(0, 90, 0));
@@ -118,7 +118,7 @@ void FQuadTreeObserver::Draw(const UWorld* World)
     for (auto& Range : Ranges)
     {
         auto Transform = FTransform(Rotation, Location, FVector::OneVector);
-        DrawDebugCircle(World, Transform.ToMatrixNoScale(), Range.SphereRadius, 64, FColor::Green);
+        DrawDebugCircle(InWorld, Transform.ToMatrixNoScale(), Range.SphereRadius, 64, FColor::Green);
     }
 #endif
 }
