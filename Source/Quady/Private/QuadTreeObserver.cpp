@@ -111,13 +111,13 @@ void FQuadTreeObserver::Draw(const UWorld* InWorld)
 #if !UE_BUILD_SHIPPING
     static const FQuat Rotation = FQuat::MakeFromEuler(FVector(0, 90, 0));
 
-	auto Location = Ranges[0].Origin;
-	Location.Z = 0.0f;
-	Location += Origin;
+	auto RangeLocation = Ranges[0].Origin;
+	RangeLocation.Z = 0.0f;
+	RangeLocation += Origin;
 
     for (auto& Range : Ranges)
     {
-        auto Transform = FTransform(Rotation, Location, FVector::OneVector);
+        auto Transform = FTransform(Rotation, RangeLocation, FVector::OneVector);
         DrawDebugCircle(InWorld, Transform.ToMatrixNoScale(), Range.SphereRadius, 64, FColor::Green);
     }
 #endif
