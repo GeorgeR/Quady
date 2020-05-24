@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Stats/Stats2.h"
-#include "LogMacros.h"
+#include "Logging/LogMacros.h"
 
 #include "Modules/ModuleManager.h"
 

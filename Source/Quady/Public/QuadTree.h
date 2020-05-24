@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Array.h"
+#include "Containers/Array.h"
 
 #include "QuadTreeNode.h"
 

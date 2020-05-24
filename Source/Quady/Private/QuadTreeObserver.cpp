@@ -3,7 +3,7 @@
 #if !UE_BUILD_SHIPPING
 #include "DrawDebugHelpers.h"
 #endif
-#include "NoExportTypes.h"
+#include "UObject/NoExportTypes.h"
 
 #define LOCTEXT_NAMESPACE "Quady"
 

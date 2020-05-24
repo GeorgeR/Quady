@@ -2,9 +2,9 @@
 
 #include "GameFramework/Actor.h"
 #include "ContentStreaming.h"
-#include "AssertionMacros.h"
-#include "Async.h"
-#include "UObjectBase.h"
+#include "Misc/AssertionMacros.h"
+#include "Async/Async.h"
+#include "UObject/UObjectBase.h"
 
 #include "Quady.h"
 #include "QuadTreeObserver.h"
